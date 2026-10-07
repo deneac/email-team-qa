@@ -68,6 +68,11 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    campaigns: Campaign;
+    revisions: Revision;
+    comments: Comment;
+    approvals: Approval;
+    activity: Activity;
     media: Media;
     folders: Folder;
     tags: Tag;
@@ -76,9 +81,18 @@ export interface Config {
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
   };
-  collectionsJoins: {};
+  collectionsJoins: {
+    campaigns: {
+      revisions: 'revisions';
+    };
+  };
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    campaigns: CampaignsSelect<false> | CampaignsSelect<true>;
+    revisions: RevisionsSelect<false> | RevisionsSelect<true>;
+    comments: CommentsSelect<false> | CommentsSelect<true>;
+    approvals: ApprovalsSelect<false> | ApprovalsSelect<true>;
+    activity: ActivitySelect<false> | ActivitySelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     folders: FoldersSelect<false> | FoldersSelect<true>;
     tags: TagsSelect<false> | TagsSelect<true>;
@@ -129,6 +143,10 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: string;
+  /**
+   * Everyone defaults to reviewer. Only admins can promote someone.
+   */
+  role: 'reviewer' | 'admin';
   figmaHandle?: string | null;
   figmaImageUrl?: string | null;
   userGroups?: string[] | null;
@@ -140,6 +158,128 @@ export interface User {
   updatedAt: string;
   createdAt: string;
   collection: 'users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "campaigns".
+ */
+export interface Campaign {
+  id: string;
+  title: string;
+  slug: string;
+  fromName?: string | null;
+  subject?: string | null;
+  subjectB?: string | null;
+  abEnabled?: boolean | null;
+  /**
+   * Admins mark this when the email has gone out.
+   */
+  shipped?: boolean | null;
+  owner?: (string | null) | User;
+  latestRevision?: (string | null) | Revision;
+  /**
+   * Last imported Design Studio email UUID
+   */
+  designStudioEmailId?: string | null;
+  revisions?: {
+    docs?: (string | Revision)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "revisions".
+ */
+export interface Revision {
+  id: string;
+  campaign: string | Campaign;
+  number: number;
+  html: string;
+  htmlHash?: string | null;
+  preheader?: string | null;
+  source?: ('paste' | 'design-studio' | 'sample') | null;
+  designStudioEmailId?: string | null;
+  designStudioName?: string | null;
+  createdBy?: (string | null) | User;
+  personalization?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments".
+ */
+export interface Comment {
+  id: string;
+  campaign: string | Campaign;
+  revision: string | Revision;
+  author?: (string | null) | User;
+  text: string;
+  category?: ('copy' | 'design' | 'bug' | 'question') | null;
+  status: 'open' | 'resolved';
+  statusUpdatedAt?: string | null;
+  statusUpdatedBy?: (string | null) | User;
+  viewport: 'mobile' | 'desktop';
+  x: number;
+  y: number;
+  replies?:
+    | {
+        author: string | User;
+        text: string;
+        createdAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "approvals".
+ */
+export interface Approval {
+  id: string;
+  campaign: string | Campaign;
+  revision: string | Revision;
+  author?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "activity".
+ */
+export interface Activity {
+  id: string;
+  campaign: string | Campaign;
+  revision?: (string | null) | Revision;
+  comment?: (string | null) | Comment;
+  author: string | User;
+  type:
+    | 'comment.add'
+    | 'comment.delete'
+    | 'comment.reply'
+    | 'comment.resolve'
+    | 'comment.reopen'
+    | 'approval.add'
+    | 'approval.withdraw'
+    | 'revision.create';
+  viewport?: string | null;
+  category?: string | null;
+  textPreview?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -219,6 +359,26 @@ export interface PayloadLockedDocument {
         value: string | User;
       } | null)
     | ({
+        relationTo: 'campaigns';
+        value: string | Campaign;
+      } | null)
+    | ({
+        relationTo: 'revisions';
+        value: string | Revision;
+      } | null)
+    | ({
+        relationTo: 'comments';
+        value: string | Comment;
+      } | null)
+    | ({
+        relationTo: 'approvals';
+        value: string | Approval;
+      } | null)
+    | ({
+        relationTo: 'activity';
+        value: string | Activity;
+      } | null)
+    | ({
         relationTo: 'media';
         value: string | Media;
       } | null)
@@ -277,11 +437,103 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  role?: T;
   figmaHandle?: T;
   figmaImageUrl?: T;
   userGroups?: T;
   makePermission?: T;
   email?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "campaigns_select".
+ */
+export interface CampaignsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  fromName?: T;
+  subject?: T;
+  subjectB?: T;
+  abEnabled?: T;
+  shipped?: T;
+  owner?: T;
+  latestRevision?: T;
+  designStudioEmailId?: T;
+  revisions?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "revisions_select".
+ */
+export interface RevisionsSelect<T extends boolean = true> {
+  campaign?: T;
+  number?: T;
+  html?: T;
+  htmlHash?: T;
+  preheader?: T;
+  source?: T;
+  designStudioEmailId?: T;
+  designStudioName?: T;
+  createdBy?: T;
+  personalization?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments_select".
+ */
+export interface CommentsSelect<T extends boolean = true> {
+  campaign?: T;
+  revision?: T;
+  author?: T;
+  text?: T;
+  category?: T;
+  status?: T;
+  statusUpdatedAt?: T;
+  statusUpdatedBy?: T;
+  viewport?: T;
+  x?: T;
+  y?: T;
+  replies?:
+    | T
+    | {
+        author?: T;
+        text?: T;
+        createdAt?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "approvals_select".
+ */
+export interface ApprovalsSelect<T extends boolean = true> {
+  campaign?: T;
+  revision?: T;
+  author?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "activity_select".
+ */
+export interface ActivitySelect<T extends boolean = true> {
+  campaign?: T;
+  revision?: T;
+  comment?: T;
+  author?: T;
+  type?: T;
+  viewport?: T;
+  category?: T;
+  textPreview?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -388,7 +640,8 @@ export interface CollectionsWidget {
 export interface CollectionQueryWidget {
   data?: {
     title?: string | null;
-    relatedCollection: 'users' | 'media' | 'folders' | 'tags';
+    relatedCollection:
+      'users' | 'campaigns' | 'revisions' | 'comments' | 'approvals' | 'activity' | 'media' | 'folders' | 'tags';
     where?:
       | {
           [k: string]: unknown;
@@ -410,7 +663,9 @@ export interface CollectionQueryWidget {
  */
 export interface ActivityWidget {
   data?: {
-    excludedCollections?: ('users' | 'media' | 'folders' | 'tags')[] | null;
+    excludedCollections?:
+      | ('users' | 'campaigns' | 'revisions' | 'comments' | 'approvals' | 'activity' | 'media' | 'folders' | 'tags')[]
+      | null;
   };
   width: 'x-small' | 'small' | 'medium' | 'large' | 'x-large' | 'full';
 }
